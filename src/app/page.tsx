@@ -51,7 +51,7 @@ export default function HomePage() {
           setActiveSampleId(found.id);
           setResult(found.sampleOutput);
           setMeta({
-            source: "live",
+            source: "example",
             model: "qwen-3.8-27b",
             durationMs: 2420,
             attempts: 1,
@@ -67,11 +67,14 @@ export default function HomePage() {
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
 
-  const showExample = (sampleId: string) => {
-    const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId);
+  const showExample = (sampleId = "kirana-flash") => {
+    const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId) || SAMPLE_BRIEFS[0];
     if (!sample) return;
+    setBrief(sample.messyBrief);
+    setActiveSampleId(sample.id);
     setResult(sample.sampleOutput);
     setPartialPartA(null);
+    setError(null);
     setMeta({ source: "example" });
     scrollToResults();
   };
@@ -135,7 +138,7 @@ export default function HomePage() {
                 const isTimeout = event.code === "TIMEOUT";
                 setError({
                   message: isTimeout
-                    ? "Generation timed out (the model took longer than 55 seconds to complete). Please try again or use a shorter brief."
+                    ? "Generation timed out after 240 seconds. The BharatCode model took too long to complete. Please try again or inspect the pre-generated sample output."
                     : event.error || "Generation error.",
                   code: event.code,
                   isTimeout,
@@ -143,7 +146,7 @@ export default function HomePage() {
                 setLoading(false);
               }
             } catch {
-              // ignore parse errors
+              // ignore non-json SSE lines
             }
           }
         }
@@ -157,7 +160,7 @@ export default function HomePage() {
         const code: string | undefined = json?.code;
         const isTimeout = res.status === 504 || code === "TIMEOUT";
         const message: string = isTimeout
-          ? "Generation timed out (the model took longer than 55 seconds to respond). The service may be experiencing high load. Please try again."
+          ? "Generation timed out after 240 seconds. The BharatCode model took too long to respond. Please try again or inspect the pre-generated sample output."
           : json?.error || `Request failed with HTTP ${res.status}.`;
 
         // When the live API key isn't configured, fall back to the labelled pre-generated example for demo briefs
@@ -221,9 +224,19 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-        <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
-          BharatCode Build League · powered by qwen-3.8-27b
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => showExample("kirana-flash")}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+          >
+            <Sparkles className="h-3 w-3 text-amber-300" />
+            Sample output
+          </button>
+          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
+            BharatCode Build League · qwen-3.8-27b
+          </span>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
@@ -299,6 +312,32 @@ export default function HomePage() {
                 </button>
               ))}
             </div>
+
+            {/* Static demo result shortcut for judges */}
+            <div className="mt-4 pt-3.5 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={() => showExample("kirana-flash")}
+                className="w-full flex items-center justify-between rounded-xl border border-amber-500/35 bg-amber-500/10 p-2.5 text-left hover:bg-amber-500/20 transition group"
+              >
+                <div className="min-w-0 pr-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="rounded-md border border-amber-400/40 bg-amber-500/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                      Sample output
+                    </span>
+                    <span className="text-xs font-semibold text-slate-200 truncate">
+                      KiranaFlash Demo
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Instant full scope view for judges (even if model is busy)
+                  </p>
+                </div>
+                <span className="text-xs font-semibold text-amber-300 shrink-0 group-hover:translate-x-0.5 transition-transform">
+                  View →
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -323,7 +362,7 @@ export default function HomePage() {
               <div className="flex-1 text-sm">
                 <p className="font-medium text-slate-100">{error.message}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {/* Retry button on timeout or failure */}
+                  {/* Retry button on real failure or timeout */}
                   <button
                     type="button"
                     onClick={() => void generate(brief, activeSampleId)}
@@ -333,31 +372,41 @@ export default function HomePage() {
                     <RotateCw className="h-3.5 w-3.5" />
                     Retry generation
                   </button>
-                  {!result && activeSampleId && error.code !== "RATE_LIMITED" && (
-                    <button
-                      type="button"
-                      onClick={() => showExample(activeSampleId)}
-                      className="text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
-                    >
-                      Show pre-generated example output
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => showExample("kirana-flash")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition"
+                  >
+                    <Sparkles className="h-3 w-3 text-amber-300" />
+                    View KiranaFlash sample output
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
           {/* If loading and partA is not ready yet: show overall progress */}
-          {loading && !partialPartA && <LoadingState />}
+          {loading && !partialPartA && (
+            <LoadingState onViewSample={() => showExample("kirana-flash")} />
+          )}
 
           {/* Progressive rendering: partA is ready while partB is loading */}
           {loading && partialPartA && (
             <>
-              <div className="flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-200">
-                <Info className="h-4 w-4 shrink-0 text-indigo-300" />
-                <span>
-                  <strong>Progressive preview:</strong> Scope summary and assumptions ready. Assembling task breakdown and timeline in parallel…
-                </span>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-200">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 shrink-0 text-indigo-300" />
+                  <span>
+                    <strong>Progressive preview:</strong> Scope summary and assumptions ready. Assembling task breakdown and timeline in parallel…
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => showExample("kirana-flash")}
+                  className="text-xs text-indigo-300 underline underline-offset-2 hover:text-indigo-200"
+                >
+                  View sample output instead
+                </button>
               </div>
               <ResultsView partialPartA={partialPartA} isWaitingPartB={true} />
             </>
@@ -370,10 +419,10 @@ export default function HomePage() {
                 className={`flex items-start gap-2 rounded-xl border px-4 py-2.5 text-xs ${
                   meta.source === "live"
                     ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-200"
-                    : "border-amber-500/30 bg-amber-500/5 text-amber-200"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-200"
                 }`}
               >
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
                 {meta.source === "live" ? (
                   <span>
                     Live result from <strong>{meta.model}</strong>
@@ -381,10 +430,25 @@ export default function HomePage() {
                     {" "}(parallel stream) · validated against ScopeBot schema.
                   </span>
                 ) : (
-                  <span>
-                    <strong>Pre-generated example output</strong> stored in the repo for this demo brief. Configure{" "}
-                    <code>BHARATCODE_API_KEY</code> for live parallel model generation.
-                  </span>
+                  <div className="flex-1 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md border border-amber-400/40 bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                        Sample output
+                      </span>
+                      <span>
+                        Pre-generated sample output for <strong>KiranaFlash</strong> brief. Full 5-section scope package ready for evaluation.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void generate(brief, activeSampleId)}
+                      disabled={loading || brief.trim().length < 20}
+                      className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-200 hover:bg-amber-500/30 transition"
+                    >
+                      <RotateCw className="h-3 w-3" />
+                      Run live model
+                    </button>
+                  </div>
                 )}
               </div>
               <ResultsView data={result} />
@@ -401,6 +465,17 @@ export default function HomePage() {
                 Paste a brief or pick a demo. ScopeBot runs parallel model streams to generate a scope summary,
                 assumptions and questions, a task breakdown with hours, a milestone timeline, and a proposal email.
               </p>
+              {/* One-click sample output for judges */}
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => showExample("kirana-flash")}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                  View KiranaFlash Sample Output (Instant)
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -41,12 +41,13 @@ Freelancers, software agencies, and product leads lose hours every week parsing 
 │                        Next.js Client (Browser)                        │
 │   • Responsive Tailwind UI       • One-click Demo Briefs               │
 │   • Progressive Section Loader   • Per-Section & Full Copy Controls    │
-│   • Friendly Timeout & Retry UI                                        │
+│   • Live Queue Status (Timer)    • Friendly Retry on Failures          │
+│   • Instant KiranaFlash "Sample output" for Judges                     │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ POST /api/scope (stream: true)
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│               ScopeBot Server Route (maxDuration = 60)                 │
+│               ScopeBot Server Route (maxDuration = 300)                │
 │                                                                        │
 │  [1] IP Rate Limiter & Guardrails                                      │
 │      • In-memory sliding window bucket (default: 10 req/min)           │
@@ -56,17 +57,21 @@ Freelancers, software agencies, and product leads lose hours every week parsing 
 │      • Call A: Scope Summary + Assumptions & Questions                 │
 │      • Call B: Task Breakdown (≤8 tasks) + Milestones (≤5) + Proposal   │
 │      • stream: true + max_tokens: 2500 per call                        │
-│      • 55s per-call AbortController timeout                            │
+│      • 240s per-call AbortController timeout                           │
 │                                                                        │
-│  [3] Server-Side SSE Assembly & Zod Schema Validation                  │
+│  [3] SSE Keepalive & Heartbeat Channel                                 │
+│      • Sends `: keepalive\n\n` comments every 10s to keep connection   │
+│        active while model is queued                                    │
+│                                                                        │
+│  [4] Server-Side SSE Assembly & Zod Schema Validation                  │
 │      • Strips <think>...</think> reasoning traces                      │
 │      • Validates ScopePartASchema & ScopePartBSchema                   │
 │                                                                        │
-│  [4] Defensive Retry on Bad JSON Loop                                  │
+│  [5] Defensive Retry on Bad JSON Loop                                  │
 │      • If attempt 1 fails JSON parse or Zod validation:                │
 │        Re-invokes model with explicit error trace & snippet            │
 │                                                                        │
-│  [5] Progressive Emission & Result Merge                               │
+│  [6] Progressive Emission & Result Merge                               │
 │      • Emits partA event as soon as Call A finishes                    │
 │      • Merges Part A & Part B into full ScopeOutput                    │
 │      • Emits complete event with duration & meta                       │
@@ -85,10 +90,12 @@ Freelancers, software agencies, and product leads lose hours every week parsing 
 ## 🚀 Key Features
 
 - **Built with Next.js 15 (App Router) + TypeScript + Tailwind CSS**: Responsive on desktop, tablet, and mobile with dark-mode aesthetic.
-- **Parallel 2-Call Model Architecture**: Splits work into two concurrent `qwen-3.8-27b` calls, cutting generation time in half and completely resolving 504 timeouts.
+- **Parallel 2-Call Model Architecture**: Splits work into two concurrent `qwen-3.8-27b` calls, cutting generation time in half.
+- **Extended Timeout & SSE Keepalive Heartbeat**: Configured with `maxDuration = 300` and a 240s internal timeout per call. Sends SSE `: keepalive\n\n` comments every 10s so connections never drop while the model is queued.
+- **Clear Queue Status & Live Timer**: UI clearly displays *"Model is queued, this can take a few minutes"* with an elapsed timer, keeping the **Retry generation** button for real failures.
+- **Instant "Sample output" for Judges**: Includes a pre-generated KiranaFlash scope package accessible with 1 click from anywhere in the app so judges can evaluate the full UI even when the model is busy.
 - **Server-Side SSE Stream Assembly**: Calls chat completions with `stream: true`, lower token budget (`max_tokens: 2500`), and compact JSON constraints (max 8 tasks, max 5 milestones).
 - **Progressive Per-Section Loading**: When generating, the UI renders Sections 1 & 2 immediately as soon as Call A resolves, while Call B finishes in parallel.
-- **Timeout Mitigation & One-Click Retry**: Configured with `maxDuration = 60` and a 55s internal timeout per call. On timeout or transient errors, the UI provides a friendly alert with a dedicated **Retry generation** button.
 - **Strict Zod Schema Validation & Auto-Correction**: Any formatting discrepancy triggers an immediate self-healing retry prompt with specific error context.
 - **In-Memory IP Rate Limiter**: Sliding-window rate limiter safeguarding against spam and API quota abuse.
 - **3 One-Click Real-World Demos**:

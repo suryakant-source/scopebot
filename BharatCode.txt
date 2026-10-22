@@ -15,17 +15,21 @@ ScopeBot — BharatCode Build League Harness Documentation
     latency compared to large 4k+ runs).
   * Compact JSON: Prompts enforce concise strings, a maximum of 8 tasks, and
     a maximum of 5 milestones to keep generation ultra-fast.
-- Server Route Timeout & Limits:
-  * `export const maxDuration = 60` configured on Next.js server route.
-  * 55-second per-call AbortController timeout with a dedicated TIMEOUT error
-    code and user-facing Retry button.
+- Server Route Timeout & Keepalive:
+  * `export const maxDuration = 300` configured on the Next.js server route.
+  * Upstream call timeout set to 240 seconds (4 minutes) with AbortController.
+  * Streams SSE keepalive comments (`: keepalive\n\n`) every 10 seconds to
+    maintain active connections across proxies while the model is queued.
+  * User-facing "Model is queued, this can take a few minutes" status with
+    live elapsed timer.
+  * Dedicated TIMEOUT error code and user-facing Retry button on failures.
 - Credential Security: BHARATCODE_API_KEY is read strictly on the server
   (src/app/api/scope/route.ts). Never bundled into client builds or browser bundles.
 
 
 2. PARALLEL TWO-CALL HARNESS ARCHITECTURE
 --------------------------------------------------------------------------------
-To completely eliminate 504 timeouts on heavy briefs, ScopeBot splits the
+To completely eliminate timeouts on heavy briefs, ScopeBot splits the
 synthesis workload into two focused parallel calls to `qwen-3.8-27b`:
 
   ┌─────────────────────────────┐       ┌─────────────────────────────┐
@@ -54,11 +58,13 @@ Both calls execute concurrently using `Promise.all()`. This cuts wall-clock
 generation time in half (typically ~15–25 seconds total).
 
 
-3. PROGRESSIVE PER-SECTION STREAMING
+3. PROGRESSIVE PER-SECTION STREAMING & KEEPALIVE
 --------------------------------------------------------------------------------
 When invoked from the web client, the `/api/scope` route supports Server-Sent
-Events (SSE) streaming:
-- As soon as Call A finishes (~15s), the server emits a `partA` event.
+Events (SSE) streaming with active keepalive heartbeats:
+- Sends `: keepalive\n\n` comments every 10s to keep the client connection
+  active without dropping when the upstream model is queued.
+- As soon as Call A finishes, the server emits a `partA` event.
   The UI immediately renders Sections 1 (Scope Summary) and 2 (Assumptions &
   Questions) while displaying a lightweight progressive placeholder for the rest.
 - As soon as Call B finishes, the server emits a `partB` event.
@@ -67,7 +73,17 @@ Events (SSE) streaming:
   the route cleanly falls back to standard HTTP 200 JSON.
 
 
-4. DEFENSIVE VALIDATION & RETRY ON BAD JSON
+4. INSTANT SAMPLE OUTPUT FOR JUDGES
+--------------------------------------------------------------------------------
+To ensure hackathon judges can immediately inspect the complete 5-section UI,
+hour breakdown tables, timelines, and proposal drafts without waiting on a
+busy model queue:
+- A dedicated "Sample output" view of the KiranaFlash scope is accessible with
+  one click directly from the header, sidebar, loading state, and empty screen.
+- Clearly marked with a prominent `Sample output` badge.
+
+
+5. DEFENSIVE VALIDATION & RETRY ON BAD JSON
 --------------------------------------------------------------------------------
 Both Call A and Call B feature independent self-correction loops:
 - Step 1: Strip any `<think>...</think>` traces from Qwen reasoning.
@@ -77,11 +93,3 @@ Both Call A and Call B feature independent self-correction loops:
   The harness extracts the exact Zod error paths and issues a focused retry
   prompt (`buildPartARetryPrompt` / `buildPartBRetryPrompt`), allowing the model
   to fix the violation on Attempt 2.
-
-
-5. TIMEOUT MITIGATION & UI RETRY
---------------------------------------------------------------------------------
-If an upstream call exceeds 55 seconds, the route aborts cleanly and returns:
-  HTTP 504: {"error": "...", "code": "TIMEOUT"}
-The UI renders a dedicated warning alert with a 1-click "Retry generation"
-button so users can instantly re-trigger without losing their brief.

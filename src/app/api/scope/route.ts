@@ -21,7 +21,7 @@ import {
   parseAndValidatePartBJson,
 } from "@/lib/schema";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const RequestBodySchema = z.object({
@@ -35,8 +35,9 @@ const RequestBodySchema = z.object({
 
 const DEFAULT_BASE_URL = "https://bharatcode.ai/api/model/v1";
 const DEFAULT_MODEL = "qwen-3.8-27b";
-const CALL_TIMEOUT_MS = 55000; // 55 seconds per call
+const CALL_TIMEOUT_MS = 240000; // 240 seconds (4 minutes) per call
 const MAX_ATTEMPTS = 2; // Initial attempt + 1 automatic retry on bad JSON
+const KEEPALIVE_INTERVAL_MS = 10000; // 10 seconds SSE heartbeat
 
 interface ModelCallResult {
   ok: boolean;
@@ -98,7 +99,7 @@ async function assembleSseStream(
 
 /**
  * Calls the BharatCode model API with stream: true and max_tokens: 2500,
- * assembling the response server-side with a 55s timeout.
+ * assembling the response server-side with a 240s timeout.
  */
 async function callBharatCodeStream(params: {
   baseUrl: string;
@@ -175,7 +176,7 @@ async function callBharatCodeStream(params: {
       code: "TIMEOUT",
       content: "",
       errorMessage: isAbort
-        ? "Request to BharatCode model API timed out after 55 seconds. Please try again."
+        ? "Request to BharatCode model API timed out after 240 seconds. Please try again."
         : err instanceof Error
         ? err.message
         : "Network error calling BharatCode API.",
@@ -348,7 +349,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error:
-          "Server environment variable BHARATCODE_API_KEY is not configured. Add your key in .env.local or use 'Instant Sample Preview' to explore the 3 pre-built demo scopes.",
+          "Server environment variable BHARATCODE_API_KEY is not configured. Add your key in .env.local or use 'Sample output' to explore the pre-built demo scopes.",
         code: "MISSING_API_KEY",
       },
       { status: 503, headers: rateHeaders }
@@ -360,11 +361,26 @@ export async function POST(req: NextRequest) {
   // 4. Handle Progressive SSE Streaming if requested by the client
   if (clientWantsStream) {
     const encoder = new TextEncoder();
+    let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
+
     const readable = new ReadableStream({
       async start(controller) {
         const sendEvent = (obj: Record<string, unknown>) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+          } catch {
+            // controller might be closed
+          }
         };
+
+        // Stream SSE keepalive comments every 10 seconds to keep connection alive while model is queued
+        keepAliveTimer = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(": keepalive\n\n"));
+          } catch {
+            if (keepAliveTimer) clearInterval(keepAliveTimer);
+          }
+        }, KEEPALIVE_INTERVAL_MS);
 
         try {
           // Launch Call A and Call B in parallel
@@ -390,7 +406,6 @@ export async function POST(req: NextRequest) {
               error: resultA.errorMessage,
               code: resultA.code || (resultA.status === 504 ? "TIMEOUT" : "UPSTREAM_ERROR"),
             });
-            controller.close();
             return;
           }
 
@@ -400,7 +415,6 @@ export async function POST(req: NextRequest) {
               error: resultB.errorMessage,
               code: resultB.code || (resultB.status === 504 ? "TIMEOUT" : "UPSTREAM_ERROR"),
             });
-            controller.close();
             return;
           }
 
@@ -423,8 +437,16 @@ export async function POST(req: NextRequest) {
             code: "STREAM_ERROR",
           });
         } finally {
-          controller.close();
+          if (keepAliveTimer) clearInterval(keepAliveTimer);
+          try {
+            controller.close();
+          } catch {
+            // already closed
+          }
         }
+      },
+      cancel() {
+        if (keepAliveTimer) clearInterval(keepAliveTimer);
       },
     });
 
@@ -449,7 +471,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: isTimeout
-          ? "Request timed out after 55 seconds. The BharatCode model took too long to complete. Please try again."
+          ? "Request timed out after 240 seconds. The BharatCode model took too long to complete. Please try again."
           : resultA.errorMessage,
         code: isTimeout ? "TIMEOUT" : resultA.code || "UPSTREAM_ERROR",
       },
@@ -462,7 +484,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: isTimeout
-          ? "Request timed out after 55 seconds. The BharatCode model took too long to complete. Please try again."
+          ? "Request timed out after 240 seconds. The BharatCode model took too long to complete. Please try again."
           : resultB.errorMessage,
         code: isTimeout ? "TIMEOUT" : resultB.code || "UPSTREAM_ERROR",
       },
