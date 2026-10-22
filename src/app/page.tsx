@@ -3,7 +3,12 @@
 import React, { useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowUpRight,
   Bot,
+  Check,
+  ChevronRight,
+  Clock,
+  Github,
   Info,
   RotateCw,
   Sparkles,
@@ -14,6 +19,7 @@ import type { ScopeOutput, ScopePartA } from "@/lib/schema";
 import { SAMPLE_BRIEFS } from "@/lib/sample-briefs";
 import { LoadingState } from "@/components/LoadingState";
 import { ResultsView } from "@/components/ResultsView";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const MAX_CHARS = 12000;
 
@@ -39,6 +45,7 @@ export default function HomePage() {
   const [meta, setMeta] = useState<ResultMeta | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -61,10 +68,10 @@ export default function HomePage() {
     }
   }, []);
 
-  const activeSample = SAMPLE_BRIEFS.find((s) => s.id === activeSampleId) ?? null;
-
   const scrollToResults = () => {
-    setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   const showExample = (sampleId = "kirana-flash") => {
@@ -163,7 +170,6 @@ export default function HomePage() {
           ? "Generation timed out after 240 seconds. The BharatCode model took too long to respond. Please try again or inspect the pre-generated sample output."
           : json?.error || `Request failed with HTTP ${res.status}.`;
 
-        // When the live API key isn't configured, fall back to the labelled pre-generated example for demo briefs
         if (code === "MISSING_API_KEY" && sampleId) {
           const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId);
           if (sample) {
@@ -195,296 +201,349 @@ export default function HomePage() {
     }
   };
 
-  const runSample = (sampleId: string) => {
+  const handleChipClick = (sampleId: string) => {
     const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId);
     if (!sample) return;
     setBrief(sample.messyBrief);
     setActiveSampleId(sample.id);
-    void generate(sample.messyBrief, sample.id);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
   };
 
   const onBriefChange = (value: string) => {
     setBrief(value.slice(0, MAX_CHARS));
-    // Editing the text detaches it from the original sample
-    if (activeSample && value !== activeSample.messyBrief) setActiveSampleId(null);
+    const active = SAMPLE_BRIEFS.find((s) => s.id === activeSampleId);
+    if (active && value !== active.messyBrief) {
+      setActiveSampleId(null);
+    }
   };
 
   return (
-    <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
-      {/* Header */}
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 shadow-lg shadow-indigo-500/20">
-            <Bot className="h-5 w-5 text-white" />
+    <div className="min-h-screen flex flex-col justify-between">
+      {/* Top Navbar */}
+      <header className="border-b border-zinc-200/80 bg-white/70 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/70 sticky top-0 z-40">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-sm font-bold text-sm">
+              ⚡
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold tracking-tight text-zinc-900 dark:text-zinc-50 text-base">
+                ScopeBot
+              </span>
+              <span className="hidden sm:inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300">
+                BharatCode Build League
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">ScopeBot</h1>
-            <p className="text-xs text-slate-400 sm:text-sm">
-              Messy client brief → scope, estimate, timeline &amp; proposal
-            </p>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => showExample("kirana-flash")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20 transition-colors shadow-xs"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              <span>Sample output</span>
+            </button>
+
+            <ThemeToggle />
+
+            <a
+              href="https://github.com/suryakant-source/scopebot"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 transition-colors"
+              aria-label="GitHub Repository"
+            >
+              <Github className="h-4 w-4" />
+            </a>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => showExample("kirana-flash")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
-          >
-            <Sparkles className="h-3 w-3 text-amber-300" />
-            Sample output
-          </button>
-          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
-            BharatCode Build League · qwen-3.8-27b
-          </span>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        {/* Input column */}
-        <div className="space-y-5 lg:sticky lg:top-6 lg:self-start">
-          <div className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <label htmlFor="brief" className="text-sm font-semibold text-slate-100">
-                Client brief
-              </label>
-              <span className="text-xs text-slate-500">
-                {brief.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-              </span>
-            </div>
+      {/* Main Content Area */}
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12 flex-1 space-y-12">
+        {/* Focused Hero Input Section (v0.dev / Linear style) */}
+        <section className="mx-auto max-w-3xl text-center space-y-4">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-100/80 px-3 py-1 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Powered by <strong>qwen-3.8-27b</strong> on BharatCode API
+          </div>
+
+          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl md:text-5xl leading-tight">
+            Turn messy client briefs into board-ready scopes.
+          </h1>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 sm:text-base max-w-2xl mx-auto leading-relaxed">
+            Paste unformatted voice notes, email dumps, or WhatsApp call summaries. ScopeBot delivers executive scopes, assumptions, task hour breakdowns, timelines, and proposal emails in seconds.
+          </p>
+
+          {/* Large Hero Textarea */}
+          <div className="mt-6 text-left card p-4 sm:p-5 focus-within:ring-2 focus-within:ring-indigo-500/60 focus-within:border-indigo-500 transition-all shadow-md dark:shadow-none">
+            <label htmlFor="brief-input" className="sr-only">
+              Paste client brief
+            </label>
             <textarea
-              id="brief"
+              id="brief-input"
+              ref={textareaRef}
               value={brief}
               onChange={(e) => onBriefChange(e.target.value)}
               onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") void generate(brief, activeSampleId);
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  void generate(brief, activeSampleId);
+                }
               }}
-              placeholder="Paste the WhatsApp forward, email thread or call notes from your client here…"
-              rows={12}
-              className="w-full resize-y rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-sm leading-relaxed text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              rows={8}
+              placeholder="Paste raw client brief here (e.g. WhatsApp forward, Slack dump, voice note transcript, or messy email thread)…"
+              className="w-full resize-y bg-transparent p-1 text-sm sm:text-base leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none dark:text-zinc-100 dark:placeholder:text-zinc-500"
             />
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void generate(brief, activeSampleId)}
-                disabled={loading || brief.trim().length < 20}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Sparkles className="h-4 w-4" />
-                {loading ? "Generating scope (parallel)…" : "Generate scope"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setBrief("");
-                  setActiveSampleId(null);
-                  setError(null);
-                }}
-                disabled={loading || brief.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 px-3 py-2.5 text-sm text-slate-300 transition hover:bg-slate-800 disabled:opacity-40"
-                aria-label="Clear brief"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+
+            {/* Action Bar inside Textarea Card */}
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200/80 pt-3 dark:border-zinc-800/80">
+              <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500">
+                {brief.length.toLocaleString()} / {MAX_CHARS.toLocaleString()} chars
+              </span>
+
+              <div className="flex items-center gap-2">
+                {brief.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBrief("");
+                      setActiveSampleId(null);
+                      setError(null);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Clear</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => void generate(brief, activeSampleId)}
+                  disabled={loading || brief.trim().length < 20}
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>{loading ? "Generating scope…" : "Generate scope"}</span>
+                  <kbd className="hidden sm:inline-block rounded bg-indigo-700/70 px-1.5 py-0.5 text-[10px] font-mono text-indigo-100">
+                    ⌘↵
+                  </kbd>
+                </button>
+              </div>
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">Tip: Ctrl/⌘ + Enter to generate.</p>
           </div>
 
-          <div className="card p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-100">
-              <Zap className="h-4 w-4 text-amber-400" /> One-click demo briefs
-            </h2>
-            <div className="space-y-2.5">
-              {SAMPLE_BRIEFS.map((sample) => (
+          {/* 3 Demo Brief Chips (Clickable) */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs">
+            <span className="font-medium text-zinc-500 dark:text-zinc-400 mr-1">
+              Try a demo brief:
+            </span>
+            {SAMPLE_BRIEFS.map((s) => {
+              const isSelected = activeSampleId === s.id;
+              return (
                 <button
-                  key={sample.id}
+                  key={s.id}
                   type="button"
-                  onClick={() => runSample(sample.id)}
-                  disabled={loading}
-                  className={`w-full rounded-xl border p-3 text-left transition disabled:opacity-50 ${
-                    activeSampleId === sample.id
-                      ? "border-indigo-500/60 bg-indigo-500/10"
-                      : "border-slate-800 bg-slate-950/40 hover:border-slate-600 hover:bg-slate-800/40"
+                  onClick={() => handleChipClick(s.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all ${
+                    isSelected
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-500 dark:bg-indigo-950/60 dark:text-indigo-300 shadow-xs"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300 dark:hover:border-zinc-700"
                   }`}
                 >
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-indigo-300">{sample.badge}</span>
-                  <span className="mt-0.5 block text-sm font-medium text-slate-100">{sample.label}</span>
-                  <span className="block text-xs text-slate-400">{sample.clientPersona}</span>
+                  <span>{s.label}</span>
+                  <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+                    ({s.badge})
+                  </span>
                 </button>
-              ))}
-            </div>
-
-            {/* Static demo result shortcut for judges */}
-            <div className="mt-4 pt-3.5 border-t border-slate-800/80">
-              <button
-                type="button"
-                onClick={() => showExample("kirana-flash")}
-                className="w-full flex items-center justify-between rounded-xl border border-amber-500/35 bg-amber-500/10 p-2.5 text-left hover:bg-amber-500/20 transition group"
-              >
-                <div className="min-w-0 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="rounded-md border border-amber-400/40 bg-amber-500/25 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
-                      Sample output
-                    </span>
-                    <span className="text-xs font-semibold text-slate-200 truncate">
-                      KiranaFlash Demo
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Instant full scope view for judges (even if model is busy)
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-amber-300 shrink-0 group-hover:translate-x-0.5 transition-transform">
-                  View →
-                </span>
-              </button>
-            </div>
+              );
+            })}
           </div>
-        </div>
+        </section>
 
-        {/* Output column */}
-        <div ref={resultsRef} className="min-w-0 scroll-mt-6 space-y-5">
+        {/* Results / Status Anchor */}
+        <div ref={resultsRef} className="scroll-mt-20">
+          {/* Error Alert with Retry button */}
           {error && (
             <div
               role="alert"
-              className={`card flex flex-col gap-3 p-4 sm:flex-row sm:items-start ${
-                meta?.source === "example"
-                  ? "border-amber-500/30"
-                  : error.isTimeout
-                  ? "border-rose-500/60 bg-rose-950/20"
-                  : "border-rose-500/40"
+              className={`mb-6 card p-4 sm:p-5 flex flex-col gap-3 sm:flex-row sm:items-start ${
+                error.isTimeout
+                  ? "border-amber-300 bg-amber-50/50 dark:border-amber-800/60 dark:bg-amber-950/30"
+                  : "border-rose-300 bg-rose-50/50 dark:border-rose-900/60 dark:bg-rose-950/30"
               }`}
             >
               <AlertTriangle
-                className={`mt-0.5 h-5 w-5 shrink-0 ${
-                  meta?.source === "example" ? "text-amber-400" : "text-rose-400"
+                className={`h-5 w-5 shrink-0 mt-0.5 ${
+                  error.isTimeout ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"
                 }`}
               />
               <div className="flex-1 text-sm">
-                <p className="font-medium text-slate-100">{error.message}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {/* Retry button on real failure or timeout */}
+                <p className="font-semibold text-zinc-900 dark:text-zinc-100">{error.message}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => void generate(brief, activeSampleId)}
                     disabled={loading || brief.trim().length < 20}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 transition disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
                   >
                     <RotateCw className="h-3.5 w-3.5" />
-                    Retry generation
+                    <span>Retry generation</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => showExample("kirana-flash")}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-100/70 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-200 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 transition-colors"
                   >
-                    <Sparkles className="h-3 w-3 text-amber-300" />
-                    View KiranaFlash sample output
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    <span>View KiranaFlash sample output</span>
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* If loading and partA is not ready yet: show overall progress */}
+          {/* Loading State with Live Queue Status */}
           {loading && !partialPartA && (
             <LoadingState onViewSample={() => showExample("kirana-flash")} />
           )}
 
-          {/* Progressive rendering: partA is ready while partB is loading */}
+          {/* Progressive Preview */}
           {loading && partialPartA && (
-            <>
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-200">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50/80 p-3.5 text-xs text-indigo-900 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-200">
                 <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 shrink-0 text-indigo-300" />
+                  <Clock className="h-4 w-4 shrink-0 animate-spin text-indigo-600 dark:text-indigo-400" />
                   <span>
-                    <strong>Progressive preview:</strong> Scope summary and assumptions ready. Assembling task breakdown and timeline in parallel…
+                    <strong>Progressive stream:</strong> Scope summary &amp; assumptions ready. Assembling task hours and milestones in parallel…
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => showExample("kirana-flash")}
-                  className="text-xs text-indigo-300 underline underline-offset-2 hover:text-indigo-200"
+                  className="font-medium underline underline-offset-2 hover:opacity-80 shrink-0"
                 >
-                  View sample output instead
+                  View sample output
                 </button>
               </div>
               <ResultsView partialPartA={partialPartA} isWaitingPartB={true} />
-            </>
+            </div>
           )}
 
-          {/* Completed output */}
+          {/* Completed Scope Output */}
           {!loading && result && meta && (
-            <>
+            <div className="space-y-4">
+              {/* Output Source Meta Banner */}
               <div
-                className={`flex items-start gap-2 rounded-xl border px-4 py-2.5 text-xs ${
+                className={`flex flex-wrap items-center justify-between gap-2.5 rounded-xl border p-3 text-xs ${
                   meta.source === "live"
-                    ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-200"
-                    : "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200"
+                    : "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
                 }`}
               >
-                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
-                {meta.source === "live" ? (
-                  <span>
-                    Live result from <strong>{meta.model}</strong>
-                    {typeof meta.durationMs === "number" && <> in {(meta.durationMs / 1000).toFixed(1)}s</>}
-                    {" "}(parallel stream) · validated against ScopeBot schema.
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                      meta.source === "live"
+                        ? "bg-emerald-200 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200"
+                        : "bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                    }`}
+                  >
+                    {meta.source === "live" ? "Live Result" : "Sample Output"}
                   </span>
-                ) : (
-                  <div className="flex-1 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-md border border-amber-400/40 bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
-                        Sample output
-                      </span>
-                      <span>
-                        Pre-generated sample output for <strong>KiranaFlash</strong> brief. Full 5-section scope package ready for evaluation.
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void generate(brief, activeSampleId)}
-                      disabled={loading || brief.trim().length < 20}
-                      className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-200 hover:bg-amber-500/30 transition"
-                    >
-                      <RotateCw className="h-3 w-3" />
-                      Run live model
-                    </button>
-                  </div>
+                  <span>
+                    {meta.source === "live" ? (
+                      <>
+                        Generated via <strong>{meta.model}</strong> in{" "}
+                        {typeof meta.durationMs === "number"
+                          ? `${(meta.durationMs / 1000).toFixed(1)}s`
+                          : "parallel stream"}{" "}
+                        • Strict Zod Schema Validated
+                      </>
+                    ) : (
+                      <>
+                        Pre-generated sample output for <strong>KiranaFlash</strong> brief. Full 5-section scope ready for judge review.
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                {meta.source === "example" && (
+                  <button
+                    type="button"
+                    onClick={() => void generate(brief, activeSampleId)}
+                    disabled={loading || brief.trim().length < 20}
+                    className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:bg-amber-50 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200 transition-colors"
+                  >
+                    <RotateCw className="h-3 w-3" />
+                    Run Live Model
+                  </button>
                 )}
               </div>
+
               <ResultsView data={result} />
-            </>
+            </div>
           )}
 
+          {/* Empty State */}
           {!loading && !result && !error && !partialPartA && (
-            <div className="card flex flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10">
-                <Sparkles className="h-6 w-6 text-indigo-300" />
+            <div className="card mx-auto max-w-2xl p-8 sm:p-12 text-center space-y-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                <Sparkles className="h-6 w-6" />
               </div>
-              <h2 className="text-lg font-semibold text-white">Your scope will appear here</h2>
-              <p className="mt-2 max-w-md text-sm text-slate-400">
-                Paste a brief or pick a demo. ScopeBot runs parallel model streams to generate a scope summary,
-                assumptions and questions, a task breakdown with hours, a milestone timeline, and a proposal email.
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 sm:text-xl">
+                Ready to scope your project
+              </h2>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
+                Paste any client notes above or test with a one-click sample brief. Or click below to immediately review a completed board-ready scope package.
               </p>
-              {/* One-click sample output for judges */}
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => showExample("kirana-flash")}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/25 transition shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-all shadow-xs"
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                  View KiranaFlash Sample Output (Instant)
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span>View KiranaFlash Sample Output</span>
+                  <ChevronRight className="h-4 w-4 text-zinc-400" />
                 </button>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      <footer className="mt-12 text-center text-xs text-slate-500">
-        ScopeBot generates estimates to support your judgement. Always review before sending to a client. Briefs are sent to
-        the BharatCode model API and are not stored by ScopeBot.
+      {/* Footer */}
+      <footer className="border-t border-zinc-200/80 bg-white/50 py-6 text-center text-xs text-zinc-500 dark:border-zinc-800/80 dark:bg-zinc-950/50 dark:text-zinc-500">
+        <div className="mx-auto max-w-6xl px-4 flex flex-wrap items-center justify-between gap-3">
+          <span>
+            ScopeBot • Built for the <strong>BharatCode Build League</strong>
+          </span>
+          <div className="flex items-center gap-4">
+            <a
+              href="https://scopebot-three.vercel.app"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"
+            >
+              Live Demo
+            </a>
+            <a
+              href="https://github.com/suryakant-source/scopebot"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors"
+            >
+              GitHub
+            </a>
+          </div>
+        </div>
       </footer>
-    </main>
+    </div>
   );
 }
