@@ -1,5 +1,5 @@
 # 🤖 ScopeBot
-
+**Live demo:** https://scopebot-three.vercel.app
 > **Turn messy, unstructured client briefs into boardroom-ready software scopes, task hour breakdowns, milestone timelines, and professional proposal emails in seconds.**  
 > Built for the **BharatCode Build League**, powered by **`qwen-3.8-27b`** via the BharatCode Model API.
 
