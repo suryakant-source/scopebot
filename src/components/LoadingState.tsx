@@ -4,13 +4,12 @@ import React, { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 const STEPS = [
-  "Reading the client brief…",
-  "Extracting objectives and deliverables…",
-  "Listing assumptions and open questions…",
-  "Breaking work into tasks with hour estimates…",
-  "Planning milestones…",
-  "Drafting the proposal email…",
-  "Validating structured JSON…",
+  "Analyzing brief & launching parallel model streams…",
+  "Call A: Extracting scope, objectives & deliverables…",
+  "Call B: Estimating task hours & engineering complexity…",
+  "Call A: Formulating assumptions & client discovery questions…",
+  "Call B: Sequencing milestones & drafting proposal email…",
+  "Validating compact JSON schemas & merging…",
 ];
 
 export function LoadingState() {
@@ -20,7 +19,7 @@ export function LoadingState() {
   useEffect(() => {
     const stepTimer = setInterval(() => {
       setStep((s) => Math.min(s + 1, STEPS.length - 1));
-    }, 3500);
+    }, 3000);
     const clock = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => {
       clearInterval(stepTimer);
@@ -35,7 +34,7 @@ export function LoadingState() {
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-100">{STEPS[step]}</p>
           <p className="text-xs text-slate-400">
-            Calling the BharatCode model · {elapsed}s elapsed (usually 15–45s)
+            Running 2 parallel BharatCode streams · {elapsed}s elapsed (internal timeout: 55s)
           </p>
         </div>
       </div>

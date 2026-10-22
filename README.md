@@ -40,39 +40,38 @@ Freelancers, software agencies, and product leads lose hours every week parsing 
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Next.js Client (Browser)                        │
 │   • Responsive Tailwind UI       • One-click Demo Briefs               │
-│   • Progress Loading Indicator   • Per-Section & Full Copy Controls    │
+│   • Progressive Section Loader   • Per-Section & Full Copy Controls    │
+│   • Friendly Timeout & Retry UI                                        │
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ POST /api/scope
+                                    │ POST /api/scope (stream: true)
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│               ScopeBot Server Route (API Handler)                      │
+│               ScopeBot Server Route (maxDuration = 60)                 │
 │                                                                        │
-│  [1] IP Rate Limiter                                                   │
+│  [1] IP Rate Limiter & Guardrails                                      │
 │      • In-memory sliding window bucket (default: 10 req/min)           │
-│      • Returns standard X-RateLimit-* & Retry-After headers            │
-│                                                                        │
-│  [2] Input Sanitization & Guardrails                                   │
 │      • Length validation (20 to 12,000 characters)                     │
 │                                                                        │
-│  [3] Secure Credential Protection                                      │
-│      • BHARATCODE_API_KEY read only in server environment              │
-│      • Zero credential exposure to browser bundle                      │
+│  [2] Parallel Streamed Generation (Promise.all)                        │
+│      • Call A: Scope Summary + Assumptions & Questions                 │
+│      • Call B: Task Breakdown (≤8 tasks) + Milestones (≤5) + Proposal   │
+│      • stream: true + max_tokens: 2500 per call                        │
+│      • 55s per-call AbortController timeout                            │
 │                                                                        │
-│  [4] Model Orchestration & Prompt Harness                              │
-│      • Dispatches to https://bharatcode.ai/api/model/v1/chat/completions│
-│      • Model: qwen-3.8-27b                                             │
-│                                                                        │
-│  [5] Extraction & Zod Schema Validation                                │
+│  [3] Server-Side SSE Assembly & Zod Schema Validation                  │
 │      • Strips <think>...</think> reasoning traces                      │
-│      • Extracts JSON substring / code fences                           │
-│      • Strict validation against ScopeOutputSchema                     │
+│      • Validates ScopePartASchema & ScopePartBSchema                   │
 │                                                                        │
-│  [6] Defensive Retry on Bad JSON Loop                                  │
+│  [4] Defensive Retry on Bad JSON Loop                                  │
 │      • If attempt 1 fails JSON parse or Zod validation:                │
 │        Re-invokes model with explicit error trace & snippet            │
-│      • Self-corrects to guarantee 100% schema compliance               │
+│                                                                        │
+│  [5] Progressive Emission & Result Merge                               │
+│      • Emits partA event as soon as Call A finishes                    │
+│      • Merges Part A & Part B into full ScopeOutput                    │
+│      • Emits complete event with duration & meta                       │
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Validated JSON
+                                    │ Validated JSON / SSE
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Interactive Output View                         │
@@ -86,7 +85,10 @@ Freelancers, software agencies, and product leads lose hours every week parsing 
 ## 🚀 Key Features
 
 - **Built with Next.js 15 (App Router) + TypeScript + Tailwind CSS**: Responsive on desktop, tablet, and mobile with dark-mode aesthetic.
-- **Server-Side BharatCode Integration**: Calls the BharatCode OpenAI-compatible endpoint (`qwen-3.8-27b`) securely via server routes.
+- **Parallel 2-Call Model Architecture**: Splits work into two concurrent `qwen-3.8-27b` calls, cutting generation time in half and completely resolving 504 timeouts.
+- **Server-Side SSE Stream Assembly**: Calls chat completions with `stream: true`, lower token budget (`max_tokens: 2500`), and compact JSON constraints (max 8 tasks, max 5 milestones).
+- **Progressive Per-Section Loading**: When generating, the UI renders Sections 1 & 2 immediately as soon as Call A resolves, while Call B finishes in parallel.
+- **Timeout Mitigation & One-Click Retry**: Configured with `maxDuration = 60` and a 55s internal timeout per call. On timeout or transient errors, the UI provides a friendly alert with a dedicated **Retry generation** button.
 - **Strict Zod Schema Validation & Auto-Correction**: Any formatting discrepancy triggers an immediate self-healing retry prompt with specific error context.
 - **In-Memory IP Rate Limiter**: Sliding-window rate limiter safeguarding against spam and API quota abuse.
 - **3 One-Click Real-World Demos**:

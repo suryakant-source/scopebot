@@ -1,8 +1,16 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { AlertTriangle, Bot, Info, Sparkles, Trash2, Zap } from "lucide-react";
-import type { ScopeOutput } from "@/lib/schema";
+import {
+  AlertTriangle,
+  Bot,
+  Info,
+  RotateCw,
+  Sparkles,
+  Trash2,
+  Zap,
+} from "lucide-react";
+import type { ScopeOutput, ScopePartA } from "@/lib/schema";
 import { SAMPLE_BRIEFS } from "@/lib/sample-briefs";
 import { LoadingState } from "@/components/LoadingState";
 import { ResultsView } from "@/components/ResultsView";
@@ -19,12 +27,14 @@ interface ResultMeta {
 interface ApiError {
   message: string;
   code?: string;
+  isTimeout?: boolean;
 }
 
 export default function HomePage() {
   const [brief, setBrief] = useState("");
   const [activeSampleId, setActiveSampleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [partialPartA, setPartialPartA] = useState<ScopePartA | null>(null);
   const [result, setResult] = useState<ScopeOutput | null>(null);
   const [meta, setMeta] = useState<ResultMeta | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -61,6 +71,7 @@ export default function HomePage() {
     const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId);
     if (!sample) return;
     setResult(sample.sampleOutput);
+    setPartialPartA(null);
     setMeta({ source: "example" });
     scrollToResults();
   };
@@ -76,6 +87,7 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setPartialPartA(null);
     setMeta(null);
     scrollToResults();
 
@@ -83,14 +95,72 @@ export default function HomePage() {
       const res = await fetch("/api/scope", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief: trimmed }),
+        body: JSON.stringify({ brief: trimmed, stream: true }),
       });
+
+      const contentType = res.headers.get("content-type") || "";
+
+      // 1. If server responded with an SSE stream for progressive loading
+      if (res.ok && contentType.includes("text/event-stream") && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
+            const dataStr = trimmedLine.slice(5).trim();
+            try {
+              const event = JSON.parse(dataStr);
+              if (event.type === "partA" && event.data) {
+                setPartialPartA(event.data);
+              } else if (event.type === "complete" && event.data) {
+                setResult(event.data as ScopeOutput);
+                setMeta({
+                  source: "live",
+                  model: event.meta?.model,
+                  durationMs: event.meta?.durationMs,
+                  attempts: Math.max(event.meta?.attemptsA || 1, event.meta?.attemptsB || 1),
+                });
+                setLoading(false);
+              } else if (event.type === "error") {
+                const isTimeout = event.code === "TIMEOUT";
+                setError({
+                  message: isTimeout
+                    ? "Generation timed out (the model took longer than 55 seconds to complete). Please try again or use a shorter brief."
+                    : event.error || "Generation error.",
+                  code: event.code,
+                  isTimeout,
+                });
+                setLoading(false);
+              }
+            } catch {
+              // ignore parse errors
+            }
+          }
+        }
+        return;
+      }
+
+      // 2. Standard JSON response or HTTP error
       const json = await res.json().catch(() => null);
 
       if (!res.ok || !json?.data) {
         const code: string | undefined = json?.code;
-        const message: string = json?.error || `Request failed with HTTP ${res.status}.`;
-        // When the live API isn't configured, fall back to the labelled pre-generated example for demo briefs
+        const isTimeout = res.status === 504 || code === "TIMEOUT";
+        const message: string = isTimeout
+          ? "Generation timed out (the model took longer than 55 seconds to respond). The service may be experiencing high load. Please try again."
+          : json?.error || `Request failed with HTTP ${res.status}.`;
+
+        // When the live API key isn't configured, fall back to the labelled pre-generated example for demo briefs
         if (code === "MISSING_API_KEY" && sampleId) {
           const sample = SAMPLE_BRIEFS.find((s) => s.id === sampleId);
           if (sample) {
@@ -100,7 +170,8 @@ export default function HomePage() {
             return;
           }
         }
-        setError({ message, code });
+
+        setError({ message, code, isTimeout });
         return;
       }
 
@@ -108,11 +179,14 @@ export default function HomePage() {
       setMeta({
         source: "live",
         model: json.meta?.model,
-        attempts: json.meta?.attempts,
+        attempts: json.meta?.attemptsA || json.meta?.attempts || 1,
         durationMs: json.meta?.durationMs,
       });
     } catch {
-      setError({ message: "Network error: could not reach the ScopeBot server." });
+      setError({
+        message: "Network error: could not reach the ScopeBot server.",
+        code: "NETWORK_ERROR",
+      });
     } finally {
       setLoading(false);
     }
@@ -142,7 +216,9 @@ export default function HomePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">ScopeBot</h1>
-            <p className="text-xs text-slate-400 sm:text-sm">Messy client brief → scope, estimate, timeline &amp; proposal</p>
+            <p className="text-xs text-slate-400 sm:text-sm">
+              Messy client brief → scope, estimate, timeline &amp; proposal
+            </p>
           </div>
         </div>
         <span className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300">
@@ -181,7 +257,7 @@ export default function HomePage() {
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Sparkles className="h-4 w-4" />
-                {loading ? "Generating scope…" : "Generate scope"}
+                {loading ? "Generating scope (parallel)…" : "Generate scope"}
               </button>
               <button
                 type="button"
@@ -231,28 +307,63 @@ export default function HomePage() {
           {error && (
             <div
               role="alert"
-              className={`card flex gap-3 p-4 ${meta?.source === "example" ? "border-amber-500/30" : "border-rose-500/40"}`}
+              className={`card flex flex-col gap-3 p-4 sm:flex-row sm:items-start ${
+                meta?.source === "example"
+                  ? "border-amber-500/30"
+                  : error.isTimeout
+                  ? "border-rose-500/60 bg-rose-950/20"
+                  : "border-rose-500/40"
+              }`}
             >
               <AlertTriangle
-                className={`mt-0.5 h-5 w-5 shrink-0 ${meta?.source === "example" ? "text-amber-400" : "text-rose-400"}`}
+                className={`mt-0.5 h-5 w-5 shrink-0 ${
+                  meta?.source === "example" ? "text-amber-400" : "text-rose-400"
+                }`}
               />
-              <div className="text-sm">
-                <p className="text-slate-200">{error.message}</p>
-                {!result && activeSampleId && error.code !== "RATE_LIMITED" && (
+              <div className="flex-1 text-sm">
+                <p className="font-medium text-slate-100">{error.message}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  {/* Retry button on timeout or failure */}
                   <button
                     type="button"
-                    onClick={() => showExample(activeSampleId)}
-                    className="mt-2 text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
+                    onClick={() => void generate(brief, activeSampleId)}
+                    disabled={loading || brief.trim().length < 20}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 transition disabled:opacity-50"
                   >
-                    Show the pre-generated example output for this demo brief instead
+                    <RotateCw className="h-3.5 w-3.5" />
+                    Retry generation
                   </button>
-                )}
+                  {!result && activeSampleId && error.code !== "RATE_LIMITED" && (
+                    <button
+                      type="button"
+                      onClick={() => showExample(activeSampleId)}
+                      className="text-xs font-medium text-indigo-300 underline-offset-2 hover:underline"
+                    >
+                      Show pre-generated example output
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {loading && <LoadingState />}
+          {/* If loading and partA is not ready yet: show overall progress */}
+          {loading && !partialPartA && <LoadingState />}
 
+          {/* Progressive rendering: partA is ready while partB is loading */}
+          {loading && partialPartA && (
+            <>
+              <div className="flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-200">
+                <Info className="h-4 w-4 shrink-0 text-indigo-300" />
+                <span>
+                  <strong>Progressive preview:</strong> Scope summary and assumptions ready. Assembling task breakdown and timeline in parallel…
+                </span>
+              </div>
+              <ResultsView partialPartA={partialPartA} isWaitingPartB={true} />
+            </>
+          )}
+
+          {/* Completed output */}
           {!loading && result && meta && (
             <>
               <div
@@ -267,13 +378,12 @@ export default function HomePage() {
                   <span>
                     Live result from <strong>{meta.model}</strong>
                     {typeof meta.durationMs === "number" && <> in {(meta.durationMs / 1000).toFixed(1)}s</>}
-                    {meta.attempts && meta.attempts > 1 && <> (auto-retried after invalid JSON)</>} · validated against the
-                    ScopeBot schema.
+                    {" "}(parallel stream) · validated against ScopeBot schema.
                   </span>
                 ) : (
                   <span>
-                    <strong>Pre-generated example output</strong> stored in the repo for this demo brief. This is not a live
-                    model call. Configure <code>BHARATCODE_API_KEY</code> to generate live scopes.
+                    <strong>Pre-generated example output</strong> stored in the repo for this demo brief. Configure{" "}
+                    <code>BHARATCODE_API_KEY</code> for live parallel model generation.
                   </span>
                 )}
               </div>
@@ -281,16 +391,15 @@ export default function HomePage() {
             </>
           )}
 
-          {!loading && !result && !error && (
+          {!loading && !result && !error && !partialPartA && (
             <div className="card flex flex-col items-center justify-center px-6 py-16 text-center">
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10">
                 <Sparkles className="h-6 w-6 text-indigo-300" />
               </div>
               <h2 className="text-lg font-semibold text-white">Your scope will appear here</h2>
               <p className="mt-2 max-w-md text-sm text-slate-400">
-                Paste a brief or pick a demo. ScopeBot returns a scope summary, assumptions and client questions, a task
-                breakdown with hour estimates, a milestone timeline and a ready-to-send proposal email, each with its own
-                copy button.
+                Paste a brief or pick a demo. ScopeBot runs parallel model streams to generate a scope summary,
+                assumptions and questions, a task breakdown with hours, a milestone timeline, and a proposal email.
               </p>
             </div>
           )}
