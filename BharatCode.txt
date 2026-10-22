@@ -1,0 +1,89 @@
+================================================================================
+ScopeBot — BharatCode Build League Harness Documentation
+================================================================================
+
+1. MODEL OVERVIEW
+--------------------------------------------------------------------------------
+- Model Identifier: qwen-3.8-27b
+- Upstream Base URL: https://bharatcode.ai/api/model/v1
+- Protocol: OpenAI-Compatible Chat Completions API (/chat/completions)
+- Temperature: 0.2 (low-entropy for high-fidelity structured estimation)
+- Max Tokens: 4096
+- Credential Security: Env variable BHARATCODE_API_KEY is read strictly on the
+  server route (src/app/api/scope/route.ts). Never bundled into client builds or
+  exposed to the browser.
+
+
+2. SYSTEM PROMPT DESIGN
+--------------------------------------------------------------------------------
+The system prompt (located in `src/lib/prompts.ts`) positions the model as a
+Principal Solutions Architect & Technical Delivery Lead. It instructs the
+model to transform unstructured, messy briefs (voice notes, WhatsApp messages,
+hasty emails) into an agency-grade technical scope package across 5 mandatory
+sections:
+
+  1. Clear Scope Summary (Title, Industry, Exec Summary, Objectives,
+     Deliverables, Out-of-Scope boundaries, Recommended Tech Stack)
+  2. Assumptions & Clarifying Questions (Assumptions with impact-if-wrong ratings,
+     Prioritized client questions with rationales)
+  3. Task Breakdown with Hour Estimates (Granular tasks with role, phase,
+     complexity, min-max ranges, expected hours, and total sums)
+  4. Milestone Timeline (Sequential phases, weeks, summaries, key deliverables,
+     and exit criteria)
+  5. Professional Proposal Email (Subject, client placeholder, warm consultative
+     body, and next-step call-to-action)
+
+Output constraint: Output strictly a single JSON object conforming to the
+provided JSON schema without leading or trailing markdown formatting.
+
+
+3. HARNESS & RETRY ON BAD JSON
+--------------------------------------------------------------------------------
+LLMs can occasionally wrap JSON in markdown blocks (```json ... ```), emit
+<think> reasoning traces, or produce invalid schemas. The ScopeBot harness
+implements a defensive self-healing pipeline:
+
+  Step 1: Ingestion & Stripping
+          Strips any <think>...</think> chain-of-thought blocks emitted by
+          reasoning-tuned Qwen models.
+  Step 2: Fence / Substring Extraction
+          Extracts from markdown code blocks or outermost matching braces { ... }.
+  Step 3: Zod Schema Validation
+          Validates syntax and schema constraints using Zod (ScopeOutputSchema
+          in `src/lib/schema.ts`).
+  Step 4: Automated Self-Correction Loop (Retry on Bad JSON)
+          If JSON parsing or schema validation fails on Attempt 1:
+          - Captures the exact Zod error paths and reasons.
+          - Re-invokes qwen-3.8-27b using `buildRetryPrompt()`, feeding back the
+            exact validation error and the previous invalid snippet.
+          - The model corrects the schema violation in Attempt 2.
+
+
+4. RATE LIMITING & SECURITY GUARDS
+--------------------------------------------------------------------------------
+- Sliding Window In-Memory Rate Limiter (`src/lib/rate-limit.ts`)
+  - Enforces max requests per IP window (Default: 10 requests / 60 seconds).
+  - Emits standard RFC rate limit headers:
+    * X-RateLimit-Limit
+    * X-RateLimit-Remaining
+    * X-RateLimit-Reset
+    * Retry-After (on HTTP 429)
+  - IP resolution inspects cf-connecting-ip, x-forwarded-for, and x-real-ip.
+- Input Guardrails:
+  - Minimum 20 characters, maximum 12,000 characters to prevent prompt injection
+    and buffer overflows.
+  - Non-streaming server-to-server request prevents key leakage.
+
+
+5. APPLICATION WORKFLOW
+--------------------------------------------------------------------------------
+1. User enters a messy brief or clicks one of the 3 one-click sample briefs.
+2. Client submits POST request to /api/scope.
+3. Server executes rate-limit check for the caller IP.
+4. Server constructs prompt harness with SCOPEBOT_SYSTEM_PROMPT and dispatches
+   to https://bharatcode.ai/api/model/v1/chat/completions.
+5. Harness receives response, extracts JSON, and executes Zod validation.
+   (If invalid, triggers automatic retry with error feedback).
+6. Validated scope payload is returned to the client.
+7. Responsive UI renders interactive cards, progress timeline, effort stats,
+   and individual copy buttons for each section.
