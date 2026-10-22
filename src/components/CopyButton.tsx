@@ -14,8 +14,8 @@ interface CopyButtonProps {
 
 export function CopyButton({
   text,
-  label = "Copy section",
-  copiedLabel = "Copied!",
+  label = "Copy",
+  copiedLabel = "Copied",
   className = "",
   variant = "default",
   size = "sm",
@@ -42,19 +42,21 @@ export function CopyButton({
   };
 
   const sizeClasses =
-    size === "sm" ? "px-2.5 py-1 text-xs gap-1.5" : "px-3.5 py-1.5 text-xs sm:text-sm gap-2";
+    size === "sm"
+      ? "px-2 py-1 text-xs gap-1.5"
+      : "px-3 py-1.5 text-xs sm:text-sm gap-2";
 
-  const baseStyles = `inline-flex items-center font-medium rounded-lg transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 ${sizeClasses}`;
+  const baseStyles = `inline-flex items-center font-medium rounded-[6px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 disabled:opacity-50 select-none ${sizeClasses}`;
 
   const variantStyles = {
     default: copied
-      ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50"
-      : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900/90 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800 dark:hover:text-zinc-100",
+      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 dark:text-emerald-400"
+      : "bg-white text-zinc-700 border border-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-800 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100",
     primary: copied
-      ? "bg-emerald-600 text-white border border-emerald-600 shadow-sm"
-      : "bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-600 shadow-sm dark:shadow-none",
+      ? "bg-emerald-600 text-white border border-emerald-600"
+      : "bg-blue-600 hover:bg-blue-500 text-white border border-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500",
     subtle: copied
-      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
       : "text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-zinc-800/60",
   };
 

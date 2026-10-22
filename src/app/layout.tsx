@@ -9,14 +9,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ScopeBot — Turn Messy Client Briefs into Board-Ready Scopes",
+  title: "ScopeBot — Technical Scoping & Proposal Generator",
   description:
-    "Autonomous scoping assistant for software agencies and engineers. Generates executive scope summaries, assumptions, task hour breakdowns, visual timelines, and proposal emails.",
+    "Convert unformatted client briefs into structured engineering scopes, risk registers, task hour estimates, milestone schedules, and client proposal emails.",
   metadataBase: new URL("https://scopebot-three.vercel.app"),
   openGraph: {
-    title: "ScopeBot — AI Scope & Proposal Generator",
+    title: "ScopeBot — Technical Scoping & Proposal Generator",
     description:
-      "Turn messy client briefs into board-ready scopes, task hour breakdowns, milestone timelines, and proposal emails in seconds.",
+      "Convert unformatted client briefs into structured engineering scopes, risk registers, task hour estimates, milestone schedules, and client proposal emails.",
     url: "https://scopebot-three.vercel.app",
     siteName: "ScopeBot",
     locale: "en_US",
@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ScopeBot — AI Scope & Proposal Generator",
+    title: "ScopeBot — Technical Scoping & Proposal Generator",
     description:
-      "Turn messy client briefs into board-ready scopes, task hour breakdowns, milestone timelines, and proposal emails in seconds.",
+      "Convert unformatted client briefs into structured engineering scopes, risk registers, task hour estimates, milestone schedules, and client proposal emails.",
   },
   icons: {
     icon: "/icon.svg",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#09090b",
+  themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
 };

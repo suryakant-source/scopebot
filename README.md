@@ -1,55 +1,45 @@
-# ⚡ ScopeBot
+![ScopeBot Interface](docs/screenshots/scopebot-desktop.png)
 
-**Live Demo:** [https://scopebot-three.vercel.app](https://scopebot-three.vercel.app)
+# ScopeBot
 
-> **Turn messy, unstructured client briefs into boardroom-ready software scopes, task hour breakdowns, milestone timelines, and professional proposal emails in seconds.**  
-> Built for the **BharatCode Build League**, powered by **`qwen-3.8-27b`** via the BharatCode Model API.
+Convert unstructured client briefs and meeting transcripts into technical engineering specifications, task hour breakdowns, milestone schedules, and client proposal emails.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
-[![BharatCode Model](https://img.shields.io/badge/Model-qwen--3.8--27b-orange)](https://bharatcode.ai)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Live Demo: [https://scopebot-three.vercel.app](https://scopebot-three.vercel.app)
+
+Built for the **BharatCode Build League**, powered by **qwen-3.8-27b** on the BharatCode Model API.
 
 ---
 
-## 📌 Problem & Overview
+## Overview
 
-Freelancers, technical founders, and agency leads spend hours every week decoding unstructured, fragmented client inputs: chaotic WhatsApp voice note transcripts, hasty Slack dumps, or bulletless emails. 
+Freelancers, software agencies, and technical leads spend substantial non-billable time parsing ambiguous, fragmented client inputs: voice note transcripts, unformatted Slack messages, and hurried email threads.
 
-**ScopeBot** transforms this raw, ambiguous input into a boardroom-ready software engineering proposal:
-1. **Clear Scope Summary**: Executive overview, business objectives, concrete deliverables, out-of-scope boundaries, and recommended tech stack.
-2. **Assumptions & Client Questions**: Explicit technical assumptions with risk impact ratings (`Low` / `Medium` / `High`), plus prioritized discovery questions (`Critical` / `Important` / `Nice-to-know`) with rationale.
-3. **Task Breakdown & Hour Estimates**: Granular engineering tasks with assigned roles, complexity badges, min–max effort ranges, and calculated expected hours.
-4. **Visual Milestone Timeline**: Phased sprint schedule with week-by-week summaries, deliverables, and verifiable exit criteria.
-5. **Client Proposal Email Draft**: Ready-to-send proposal email with subject line, scope highlights, and call-to-action.
+ScopeBot standardizes this intake process into a structured five-part technical package:
 
----
-
-## 📸 Interface Walkthrough
-
-| View | Screenshot |
-|---|---|
-| **Studio Hero (Focused Input & Demo Chips)** | ![ScopeBot Studio Hero](./docs/screenshots/scopebot-hero.png) |
-| **Result View (Sticky Nav, Hour Bar, Visual Timeline & Proposal)** | ![ScopeBot Results View](./docs/screenshots/scopebot-results.png) |
-| **Mobile Responsive (Tested down to 360px)** | ![ScopeBot Mobile View](./docs/screenshots/scopebot-mobile.png) |
+1. **Scope Summary**: Executive summary, business objectives, concrete deliverables, out-of-scope boundaries, and recommended tech stack.
+2. **Assumptions Register**: Explicit technical assumptions categorized with impact ratings (Low, Medium, High).
+3. **Clarifying Questions**: Prioritized discovery questions (Critical, Important, Nice-to-have) with rationale for initial client alignment.
+4. **Task Breakdown & Hour Estimates**: Granular engineering work items with assigned roles, complexity weighting, min-max effort bounds, and calculated expected hours.
+5. **Milestone Schedule & Proposal Email**: Phased delivery gates with deliverables and verifiable exit criteria, accompanied by a ready-to-send client proposal email.
 
 ---
 
-## 🔄 How It Works (4 Steps)
+## How It Works
 
 ```
-[ Step 1: Input ] ───► [ Step 2: Parallel Stream ] ───► [ Step 3: Validate & Retry ] ───► [ Step 4: Boardroom Scope ]
+[ 1. Input Brief ] ---> [ 2. Parallel Stream ] ---> [ 3. Zod Validate & Retry ] ---> [ 4. Tabbed Output ]
 ```
 
-1. **Paste Messy Notes:** The user pastes raw client notes (up to 12,000 characters) or clicks any of the 3 one-click sample briefs (*KiranaFlash*, *LexVeda AI*, *ArogyaPulse*).
-2. **Parallel Streamed Synthesis:** `/api/scope` fires two concurrent calls to `qwen-3.8-27b` on BharatCode with `stream: true` and 10s SSE keepalive comments to prevent socket drops while queued.
-3. **Strict Validation & Self-Healing:** The server strips reasoning traces (`<think>`), extracts JSON, and validates both parts against strict Zod schemas. If the model emits malformed JSON, an automated retry prompt sends the exact error back for correction.
-4. **Progressive Render & Export:** Sections 1 & 2 appear as soon as Call A finishes. When Call B completes, the visual timeline, task table, and proposal email populate with copy controls and Markdown export.
+1. **Input Brief**: The user enters raw client notes (up to 12,000 characters) or selects one of three sample briefs (KiranaFlash, ArogyaSync, LedgerFlow).
+2. **Parallel Streamed Inference**: `/api/scope` spawns two concurrent streaming requests to `qwen-3.8-27b` on BharatCode. Server-sent keepalive comments (`: keepalive\n\n`) are emitted every 10 seconds to keep HTTP connections alive while queued.
+   - **Call A**: Scope summary, objectives, deliverables, out-of-scope boundaries, tech stack, assumptions, and client discovery questions.
+   - **Call B**: Granular task breakdown, role allocation, complexity weights, hour estimates, milestone sequencing, and proposal email draft.
+3. **Validation & Self-Repair**: The server strips reasoning traces (`<think>`), parses compact JSON, and validates payloads against strict Zod schemas. If malformed JSON or type mismatches occur, an automated retry prompt sends the exact error path back to the model for correction.
+4. **Dev-Tool Output View**: Progressively renders Section 1 and 2 as soon as Call A resolves. When Call B completes, the interface displays the full tabbed output (`Scope`, `Estimate`, `Risks & Proposal`) with individual section copy controls, code/mono formatting, and complete Markdown export.
 
 ---
 
-## 🏗️ Architecture Diagram
+## Architecture
 
 ```mermaid
 sequenceDiagram
@@ -80,7 +70,7 @@ sequenceDiagram
         ModelA-->>Route: Corrected JSON
     end
     Route-->>User: data: {"type": "partA", data: {...}}
-    Note over User: Renders Sections 1 & 2 immediately!
+    Note over User: Renders Scope and Assumptions tabs immediately
 
     ModelB-->>Route: SSE stream tokens (assembled server-side)
     Route->>Zod: Validate ScopePartBSchema
@@ -92,31 +82,31 @@ sequenceDiagram
 
     Note over Route: Merge Part A + Part B into ScopeOutput
     Route-->>User: data: {"type": "complete", data: merged, meta: {...}}
-    Note over User: Complete 5-section scope view active
+    Note over User: Complete 5-section package active
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework:** [Next.js 15 (App Router)](https://nextjs.org/)
-- **Language:** [TypeScript 5.7](https://www.typescriptlang.org/) (Strict mode)
-- **Styling & Design System:** [Tailwind CSS 3.4](https://tailwindcss.com/) with 8px rhythm, dark/light theme support, and custom shimmer loaders
-- **Typography:** Inter (`next/font/google`) with system fallbacks
-- **Schema Validation:** [Zod 3.24](https://zod.dev/)
-- **Icons:** [Lucide React](https://lucide.dev/)
-- **AI Model & Inference:** `qwen-3.8-27b` via BharatCode Model API (`https://bharatcode.ai/api/model/v1`)
-- **Deployment:** Vercel / Cloudflare Pages
+- **Framework**: Next.js 15 (App Router, Node.js runtime)
+- **Language**: TypeScript 5.7 (Strict mode)
+- **Styling**: Tailwind CSS 3.4 (Restrained dev-tool palette, 1px borders, 6px radius)
+- **Typography**: Inter (`next/font/google`)
+- **Validation**: Zod 3.24
+- **Icons**: Lucide React
+- **Inference Model**: `qwen-3.8-27b` via BharatCode Model API (`https://bharatcode.ai/api/model/v1`)
+- **Hosting**: Vercel
 
 ---
 
-## ⚙️ Local Setup & Development
+## Local Setup
 
 ### Prerequisites
 
-- **Node.js**: v18.18+ (Node 20+ recommended)
-- **npm** or **pnpm**
-- **BharatCode API Key**: from [BharatCode.ai](https://bharatcode.ai)
+- Node.js v18.18 or higher (Node 20+ recommended)
+- npm or pnpm
+- BharatCode API Key
 
 ### 1. Clone the repository
 
@@ -140,10 +130,10 @@ cp .env.example .env.local
 Edit `.env.local`:
 
 ```ini
-# BharatCode API credentials (server-only, never exposed to browser)
+# BharatCode API credentials (server-only, never exposed to client)
 BHARATCODE_API_KEY=your_bharatcode_api_key_here
 
-# Optional overrides (defaults shown)
+# Model configuration
 BHARATCODE_BASE_URL=https://bharatcode.ai/api/model/v1
 BHARATCODE_MODEL=qwen-3.8-27b
 
@@ -160,7 +150,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### 5. Typecheck and Build
+### 5. Typecheck and build
 
 ```bash
 npm run typecheck
@@ -169,15 +159,26 @@ npm run build
 
 ---
 
-## 🔌 API Route Specification (`/api/scope`)
+## Environment Variables
 
-- **Method:** `POST`
-- **Route Handler:** [`src/app/api/scope/route.ts`](./src/app/api/scope/route.ts)
-- **Runtime:** `nodejs` (`export const maxDuration = 300`, `export const dynamic = "force-dynamic"`)
-- **Headers Returned:**
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `BHARATCODE_API_KEY` | Yes | None | BharatCode API authentication key. Kept strictly on the server. |
+| `BHARATCODE_BASE_URL` | No | `https://bharatcode.ai/api/model/v1` | Base URL for OpenAI-compatible completions endpoint. |
+| `BHARATCODE_MODEL` | No | `qwen-3.8-27b` | Target inference model ID. |
+| `RATE_LIMIT_MAX_REQUESTS` | No | `10` | Maximum requests permitted per IP per window. |
+| `RATE_LIMIT_WINDOW_MS` | No | `60000` | Sliding rate-limit window in milliseconds (default: 60s). |
+
+---
+
+## API Specification (`/api/scope`)
+
+- **Method**: `POST`
+- **Route Handler**: `src/app/api/scope/route.ts`
+- **Runtime**: `nodejs` (`export const maxDuration = 300`)
+- **Headers**:
+  - `Content-Type: text/event-stream` (when `stream: true`)
   - `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
-  - `Retry-After` (when rate-limited)
-  - `Content-Type: text/event-stream` (when `stream: true`) or `application/json`
 
 ### Request Body
 
@@ -190,52 +191,46 @@ npm run build
 
 ### SSE Stream Events (`stream: true`)
 
-| Event Type | Payload | Description |
+| Event | Payload | Description |
 |---|---|---|
-| `: keepalive` | Plain comment | Sent every 10s to keep connection alive while model is queued |
-| `partA` | `{ scopeSummary, assumptionsAndQuestions }` | Emitted as soon as Call A resolves |
-| `partB` | `{ taskBreakdown, milestoneTimeline, proposalEmail }` | Emitted as soon as Call B resolves |
-| `complete` | `{ data: ScopeOutput, meta: { model, durationMs, ... } }` | Merged and validated scope package |
-| `error` | `{ error: string, code: "TIMEOUT" \| "UPSTREAM_ERROR" }` | Emitted on failure with friendly message |
+| `: keepalive` | Comment | Emitted every 10s to prevent proxy timeouts while upstream inference is queued. |
+| `partA` | `{ scopeSummary, assumptionsAndQuestions }` | Emitted immediately once Call A is parsed and validated. |
+| `partB` | `{ taskBreakdown, milestoneTimeline, proposalEmail }` | Emitted immediately once Call B is parsed and validated. |
+| `complete` | `{ data: ScopeOutput, meta: { model, durationMs } }` | Merged final output ready for export. |
+| `error` | `{ error: string, code: "TIMEOUT" \| "UPSTREAM_ERROR" }` | Emitted on failure with actionable error description. |
 
 ---
 
-## 💡 Key Design Decisions
+## Design Decisions
 
-1. **Parallel 2-Call Splitting (`Promise.all`):**  
-   Generating all 5 sections in a single prompt required ~2,500 sequential tokens, which took 55–70s and caused 504 gateway timeouts. By splitting into Call A (Scope + Assumptions) and Call B (Tasks + Timeline + Proposal), execution runs concurrently and completes in ~18–25s.
-2. **Server-Side SSE Stream Assembly (`stream: true`):**  
-   The server initiates upstream calls with `stream: true`, parsing SSE chunks (`data: {...}`) server-side. This keeps TCP sockets continuously active and avoids proxy timeouts on idle connections.
-3. **10s SSE Keepalive Heartbeat:**  
-   During peak loads when the model is queued, the server emits `: keepalive\n\n` comments every 10 seconds. Browser sockets, Vercel edge routers, and Cloudflare proxies remain connected up to the 240s upstream timeout.
-4. **Self-Healing Zod Validation & Retry Loop:**  
-   If Attempt 1 produces malformed JSON or invalid types, the harness extracts the specific Zod error paths and issues a focused retry prompt (`buildPartARetryPrompt` / `buildPartBRetryPrompt`). The model self-corrects on Attempt 2.
-5. **In-Memory Sliding-Window Rate Limiter:**  
-   Guards against abuse with a sliding-window bucket per client IP (10 requests/minute by default), emitting standard RFC rate-limiting headers.
-6. **Instant "Sample Output" for Hackathon Judges:**  
-   To prevent judges from waiting on busy queues during evaluation, a pre-generated KiranaFlash scope package is accessible with 1 click from the header, sidebar, loading state, and empty screen.
+1. **Parallel 2-Call Splitting**: Generating all five sections sequentially in a single prompt required ~2,500 tokens, which exceeded the upstream latency threshold. Splitting into concurrent calls (Call A: Scope + Assumptions, Call B: Tasks + Milestones + Proposal) reduces wall-clock execution time by more than half.
+2. **Server-Side Stream Assembly**: The server initiates upstream requests with `stream: true`, reading tokens incrementally to prevent proxy socket drops on long-running model generations.
+3. **10-Second Keepalive Heartbeats**: During peak competition traffic when the model server queues requests, the API route continuously sends SSE comment pulses (`: keepalive\n\n`) to preserve client and edge connections up to the 240-second upstream timeout.
+4. **Zod Validation & Auto-Repair Loop**: Outputs are validated against strict TypeScript/Zod schemas. If syntax errors or schema violations occur, the error path is sent directly back to the model in a targeted repair prompt.
+5. **Pre-Generated Sample Output**: A complete pre-generated scope dataset (KiranaFlash) is embedded client-side, allowing judges and reviewers to explore the full interface immediately even if upstream API capacity is constrained.
+6. **Restrained Dev-Tool Interface**: Built with a two-pane layout inspired by developer platforms (Linear, Stripe docs): 1px borders, 6px radius, neutral palette, monospace formatting for technical metrics, and zero marketing gimmicks.
 
 ---
 
-## ⚠️ Known Limitations
+## Limitations
 
-- **LLM Estimation Heuristics:** Hour estimates and team velocity assumptions generated by `qwen-3.8-27b` are designed as a consultative baseline. Technical leads should always adjust numbers for specific team seniority and client constraints before contractual sign-off.
-- **Model Queue Latency:** Under heavy public competition load, the BharatCode inference server may queue requests. The UI displays an active timer and keepalive indicator up to the 240-second limit.
-- **In-Memory Rate Limiting:** The sliding-window rate limiter runs in server memory, which resets upon cold-start serverless container recycling. (A production enterprise deployment would back this with Upstash Redis).
-
----
-
-## 🏆 Built for the BharatCode Build League
-
-ScopeBot was conceived, architected, and built specifically for the **BharatCode Build League**.
-
-- **Hosted Model:** `qwen-3.8-27b`
-- **Model Endpoint:** `https://bharatcode.ai/api/model/v1`
-- **Harness Spec:** Complete prompt engineering, schema definitions, and workflow documentation are preserved in [`BharatCode.txt`](./BharatCode.txt).
-- **Security Guarantee:** `BHARATCODE_API_KEY` is loaded strictly on the server route and is never bundled or exposed to the client.
+- **Estimation Heuristics**: Hour estimates and phase distributions generated by `qwen-3.8-27b` serve as consultative engineering baselines. Technical teams should calibrate estimates against internal seniority and stack velocity prior to contractual execution.
+- **Model Queue Latency**: Under peak competition volume, the BharatCode inference server may queue requests. ScopeBot handles this gracefully with live elapsed timers and SSE keepalives up to the 240-second cutoff.
+- **In-Memory Rate Limiting**: The sliding-window rate limiter runs in server memory per container instance. Production multi-region deployments should back this with Redis or an edge KV store.
 
 ---
 
-## 📜 License
+## Built for the BharatCode Build League
 
-Distributed under the [MIT License](LICENSE). Copyright © 2026 Suryakant Sahoo.
+ScopeBot was architected and built for the **BharatCode Build League**.
+
+- **Hosted Model**: `qwen-3.8-27b`
+- **Model Endpoint**: `https://bharatcode.ai/api/model/v1`
+- **Harness Documentation**: Detailed prompt engineering, schema definitions, and workflow design are documented in [`BharatCode.txt`](./BharatCode.txt).
+- **Security**: `BHARATCODE_API_KEY` is accessed exclusively in server-side route handlers and is never transmitted to or bundled within client code.
+
+---
+
+## License
+
+Distributed under the MIT License. Copyright (c) 2026 Suryakant Sahoo.

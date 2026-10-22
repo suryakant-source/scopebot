@@ -4,21 +4,33 @@
 
 @layer base {
   :root {
-    --bg-page: #f8fafc;
-    --text-primary: #09090b;
-    --text-secondary: #52525b;
-    --card-bg: #ffffff;
-    --card-border: #e4e4e7;
-    --card-subtle: #f4f4f5;
+    --bg-page: #fbfbfb;
+    --bg-panel: #ffffff;
+    --bg-subtle: #f4f4f5;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --text-primary: #18181b;
+    --text-secondary: #71717a;
+    --text-muted: #a1a1aa;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
   }
 
   .dark {
-    --bg-page: #09090b;
-    --text-primary: #fafafa;
-    --text-secondary: #a1a1aa;
-    --card-bg: #121215;
-    --card-border: #27272a;
-    --card-subtle: #18181b;
+    --bg-page: #0a0a0a;
+    --bg-panel: #121212;
+    --bg-subtle: #181818;
+    --border: #242424;
+    --border-strong: #333333;
+    --text-primary: #ededed;
+    --text-secondary: #8a8a8a;
+    --text-muted: #555555;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+  }
+
+  * {
+    border-color: var(--border);
   }
 
   html {
@@ -34,72 +46,34 @@
   }
 }
 
-.card {
-  @apply rounded-xl border border-zinc-200 bg-white shadow-sm transition-all duration-150 dark:border-zinc-800/80 dark:bg-zinc-900/70 dark:shadow-none;
+.panel {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
-.card-hover {
-  @apply hover:border-zinc-300 dark:hover:border-zinc-700/90;
+.subtle-border {
+  border: 1px solid var(--border);
 }
 
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(228, 228, 231, 0.4) 0%,
-    rgba(244, 244, 245, 0.9) 50%,
-    rgba(228, 228, 231, 0.4) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
+/* Subtle skeleton pulse (linear 180ms ease, no heavy animations) */
+.skeleton-box {
+  background-color: var(--bg-subtle);
+  border-radius: 4px;
 }
 
-.dark .shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(39, 39, 42, 0.4) 0%,
-    rgba(63, 63, 70, 0.7) 50%,
-    rgba(39, 39, 42, 0.4) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Custom subtle scrollbar */
+/* Minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(161, 161, 170, 0.25);
-  border-radius: 9999px;
+  background: rgba(120, 120, 120, 0.2);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(161, 161, 170, 0.4);
+  background: rgba(120, 120, 120, 0.4);
 }
